@@ -14,7 +14,9 @@ async function tg(method, body) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  return r.json();
+  const j = await r.json();
+  if (!j.ok) console.error("TELEGRAM XATO:", method, JSON.stringify(j));
+  return j;
 }
 
 // ---------- Xatolarni tuzatish (fuzzy match) ----------
@@ -56,7 +58,7 @@ async function archiveSearch(q) {
   const base = "https://archive.org/advancedsearch.php";
   const common = "&fl[]=identifier&fl[]=title&fl[]=downloads&rows=150&output=json";
   const queries = [
-    `mediatype:movies AND subject:horror AND title:(${q.split(" ").map((w) => w + "*").join(" ")})`,
+    `mediatype:movies AND subject:horror AND title:(${norm(q).split(" ").filter(Boolean).map((w) => w + "*").join(" ") || "a*"})`,
     `mediatype:movies AND subject:horror AND collection:feature_films&sort[]=downloads+desc`,
   ];
   const results = new Map();
@@ -166,8 +168,11 @@ async function handleCallback(cb) {
 
 module.exports = async (req, res) => {
   try {
+    if (!TOKEN) console.error("BOT_TOKEN topilmadi! Vercel Environment Variables ni tekshiring.");
     if (req.method === "POST") {
       const u = req.body || {};
+      const cid = u.message?.chat?.id || u.callback_query?.message?.chat?.id;
+      console.log("Xabar keldi, chat id:", cid, "| ADMIN_CHAT_ID:", process.env.ADMIN_CHAT_ID || "yo'q");
       if (u.message) await handleMessage(u.message);
       else if (u.callback_query) await handleCallback(u.callback_query);
     }
